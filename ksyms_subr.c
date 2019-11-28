@@ -2,13 +2,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
+#define _PATH_CAT	"/bin/cat"
 #define _PATH_NM	"/usr/bin/nm"
 #define _PATH_SORT	"/usr/bin/sort"
 
 struct symtbl {
 	const char *symbol;
-	unsigned long addr;
+	uintptr_t addr;
 };
 
 static struct symtbl *symtbls;
@@ -43,9 +45,9 @@ symtbl_add(const char *symbol, const char *addrstr)
 {
 	struct symtbl *symtbl;
 	const char *sym;
-	unsigned long addr;
+	uintptr_t addr;
 
-	addr = strtoul(addrstr, NULL, 16);
+	addr = strtoull(addrstr, NULL, 16);
 
 	symtbl = symtbl_alloc();
 	if (symtbl == NULL)
@@ -64,15 +66,15 @@ ksyms_dump(void)
 	unsigned long i;
 
 	for (i = 0, symtbl = symtbls; i < symtbl_cur; i++, symtbl++) {
-		printf("%u: %016lx %s\n", i, symtbl->addr, symtbl->symbol);
+		printf("%u: %lx %s\n", i, symtbl->addr, symtbl->symbol);
 	}
 }
 
 const char *
-ksyms_lookup(unsigned long addr)
+ksyms_lookupsym(uintptr_t addr)
 {
 	struct symtbl *base, *sym;
-	unsigned int lim;
+	unsigned long lim;
 	static char buf[1024];
 
 	if (addr == 0)
@@ -97,6 +99,19 @@ ksyms_lookup(unsigned long addr)
 	return buf;
 }
 
+uintptr_t
+ksyms_lookup(const char *name)
+{
+	struct symtbl *tbl;
+
+	for (tbl = symtbls; tbl < symtbls + symtbl_cur; tbl++) {
+		if (strcmp(tbl->symbol, name) == 0) {
+			return tbl->addr;
+		}
+	}
+	return -1;
+}
+
 void
 ksyms_destroy(void)
 {
@@ -110,12 +125,24 @@ int
 ksyms_load(void)
 {
 	FILE *fh;
-	char cmdline[512];	/* "/usr/bin/nm /dev/ksyms | sort" */
+	char tmpfile1[512];
+	char tmpfile2[512];
+	char cmdline[512];	/* "/bin/cat /dev/ksyms > /tmp/$$.2; /usr/bin/nm /tmp/$$.2 | sort > $$.2" */
 	char linebuf[1024];
+	pid_t pid = getpid();
 
-	snprintf(cmdline, sizeof(cmdline), "%s %s | %s", _PATH_NM, _PATH_KSYMS, _PATH_SORT);
+	snprintf(tmpfile1, sizeof(tmpfile1), "/tmp/softintdump.tmp1.%u", pid);
+	snprintf(tmpfile2, sizeof(tmpfile2), "/tmp/softintdump.tmp2.%u", pid);
+	snprintf(cmdline, sizeof(cmdline), "%s %s > %s; %s %s | %s > %s", _PATH_CAT, _PATH_KSYMS, tmpfile1, _PATH_NM, tmpfile1, _PATH_SORT, tmpfile2);
 
-	fh = popen(cmdline, "r");
+	/* XXX */
+	system(cmdline);
+	unlink(tmpfile1);
+	fh = fopen(tmpfile2, "r");
+	unlink(tmpfile2);
+
+	if (fh == NULL)
+		return -1;
 
 	while (fgets(linebuf, sizeof(linebuf), fh) != NULL) {
 #define MAXPARAMS	8
@@ -155,6 +182,8 @@ main(int argc, char *argv[])
 {
 	ksyms_load();
 
-	printf("%s\n", ksyms_lookup(0xffffffff815c9b88ULL));
+	printf("%s\n", ksyms_lookupsym(0xffffffff80e38440ULL));
+	printf("0x%llx\n", ksyms_lookup("sigill_debug"));
+
 }
 #endif

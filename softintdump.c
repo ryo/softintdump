@@ -72,7 +72,7 @@ main(int argc, char *argv[])
 	printf("sizeof cpudata = %u\n", sizeof(struct cpu_data));
 	printf("sizeof proc = %u\n", sizeof(struct proc));
 	printf("sizeof lwp = %u\n", sizeof(struct lwp));
-	printf("sizeof struct softhand = %u\n", sizeof(softhand));
+	printf("sizeof struct softhand = %u\n", sizeof(softhand_t));
 #endif
 
 	pagesize = getpagesize();
@@ -203,7 +203,6 @@ found:
 				break;
 			}
 
-
 			memset(&softint, 0, sizeof(softint));
 			if (softhand.sh_isr != NULL) {
 				size = kvm_read(kd, (unsigned long)softhand.sh_isr,
@@ -213,11 +212,11 @@ found:
 				}
 			}
 
-			if (softhand.sh_func == NULL &&
+			if (i != 0 &&
+			    softhand.sh_func == NULL &&
 			    softhand.sh_arg == 0 &&
 			    softhand.sh_isr == 0)
 				continue;
-
 
 #ifdef DEBUG
 			printf("kvm:%016llx: ", softhandp);
@@ -227,12 +226,11 @@ found:
 
 			printf("sc_hand[%3d/%d].sh_func=%016lx %-32s  .arg=%018p  .sh_isr=%p [%s][%s]\n", i, softint_max,
 			    (unsigned long)softhand.sh_func,
-			    ksyms_lookup((unsigned long)softhand.sh_func),
+			    ksyms_lookupsym((unsigned long)softhand.sh_func),
 			    softhand.sh_arg,
 			    softhand.sh_isr,
 			    softint.si_name,
 			    softint.si_name_block);
-
 		}
 
 		printf("\n");
