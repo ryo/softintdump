@@ -13,6 +13,7 @@
 #include <sys/cpu_data.h>
 #include <sys/evcnt.h>
 #include <sys/intr.h>
+#include <sys/param.h>
 #include <sys/proc.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
@@ -141,6 +142,9 @@ main(int argc, char *argv[])
 		err(EX_IOERR, "kvm_read");
 
 	for (cpuno = 0; cpuno < MAXCPUINFOS; cpuno++) {
+		char cpu_name[8];
+		snprintf(cpu_name, sizeof(cpu_name), "cpu%d", cpuno);
+
 		if (cpu_infos[cpuno] == 0)
 			continue;
 
@@ -155,7 +159,7 @@ main(int argc, char *argv[])
 			if (size == -1)
 				err(EX_IOERR, "kvm_read");
 
-			if (cpudata.cpu_onproc == curlwp)
+			if (strcmp(cpudata.cpu_name, cpu_name) == 0)
 				goto found;
 		}
 	}
