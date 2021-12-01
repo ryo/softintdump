@@ -1,3 +1,10 @@
+#include <sys/param.h>
+#include <sys/cpu_data.h>
+#include <sys/evcnt.h>
+#include <sys/intr.h>
+#include <sys/proc.h>
+#include <sys/queue.h>
+#include <sys/sysctl.h>
 #include <err.h>
 #include <fcntl.h>
 #include <kvm.h>
@@ -9,14 +16,6 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-
-#include <sys/cpu_data.h>
-#include <sys/evcnt.h>
-#include <sys/intr.h>
-#include <sys/param.h>
-#include <sys/proc.h>
-#include <sys/queue.h>
-#include <sys/sysctl.h>
 
 #include "ksyms_subr.h"
 #include "softint.h"
@@ -159,8 +158,13 @@ main(int argc, char *argv[])
 			if (size == -1)
 				err(EX_IOERR, "kvm_read");
 
+#if __NetBSD_Version__ >= 999001900
 			if (strcmp(cpudata.cpu_name, cpu_name) == 0)
 				goto found;
+#else
+			if (cpudata.cpu_onproc == curlwp)
+				goto found;
+#endif
 		}
 	}
 
@@ -168,6 +172,10 @@ main(int argc, char *argv[])
 	exit(1);
 
 found:
+
+#ifdef DEBUG
+	printf("offsetof(struct cpu_info, ci_data) = %u\n", cpudata_offset);
+#endif
 
 	for (cpuno = 0; cpuno < MAXCPUINFOS; cpuno++) {
 		softcpu_t softcpu;
