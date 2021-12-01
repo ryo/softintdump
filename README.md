@@ -1,3 +1,20 @@
+# softintdump
+
+softintdump is a program to display the softint(9) handler tables of the NetBSD kernel.
+Since it refers directly to the kernel memory via /dev/kmem, root privileges are required.
+
+
+# build
+To build, you need the NetBSD source tree. In particular, /usr/src/sys/kern/kern_softint.c must be from a running kernel. See the Makefile for details.
+
+
+# see also
+- https://man.netbsd.org/softint.9
+- https://man.netbsd.org/kmem.9
+- https://nxr.netbsd.org/xref/src/sys/kern/kern_softint.c
+- https://nxr.netbsd.org/search?q=cpu_softcpu&project=src&defs=&refs=&path=&hist=
+
+# example
 	# sudo softintdump
 	CPU0: sc_hand[  1/799].sh_func=ffffffc0004bf070 arpintr                           .arg=0x0000000000000000  .sh_isr=0xffffffc062a10230 [net/0][net block/0]
 	CPU0: sc_hand[  2/799].sh_func=ffffffc0003d8c40 callout_softclock                 .arg=0x0000000000000000  .sh_isr=0xffffffc062a100c0 [clk/0][clk block/0]
